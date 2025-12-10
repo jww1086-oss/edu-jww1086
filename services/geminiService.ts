@@ -1,9 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult } from '../types';
 
-// 아래 줄이 마법의 코드입니다. 빨간 줄 에러를 무시하게 해줍니다.
-// @ts-ignore
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+// 기존에 맨 위에 있던 const ai = ... 코드를 삭제했습니다. (이게 하얀 화면의 주범입니다!)
 
 export const analyzeFeedback = async (comments: string[]): Promise<AnalysisResult> => {
   if (comments.length === 0) {
@@ -13,6 +11,23 @@ export const analyzeFeedback = async (comments: string[]): Promise<AnalysisResul
       keyPoints: []
     };
   }
+
+  // 1. API 키를 안전하게 가져옵니다.
+  // @ts-ignore
+  const apiKey = import.meta.env.VITE_API_KEY;
+
+  // 2. 키가 없으면 하얀 화면 대신 '안내 메시지'를 보여줍니다.
+  if (!apiKey) {
+    console.error("API Key is missing!");
+    return {
+      summary: "오류: Vercel 설정에서 VITE_API_KEY를 찾을 수 없습니다.",
+      sentiment: "neutral",
+      keyPoints: ["환경 변수 설정을 확인해주세요."]
+    };
+  }
+
+  // 3. 키가 있을 때만 AI를 연결합니다. (안전!)
+  const ai = new GoogleGenAI({ apiKey: apiKey });
 
   const prompt = `
   다음은 안전보건교육 만족도 조사의 주관식 응답들입니다.
@@ -42,7 +57,6 @@ export const analyzeFeedback = async (comments: string[]): Promise<AnalysisResul
       }
     });
 
-    // 응답 텍스트를 JSON으로 변환
     const text = response.text();
     if (!text) throw new Error("No response text");
     return JSON.parse(text);
@@ -52,7 +66,7 @@ export const analyzeFeedback = async (comments: string[]): Promise<AnalysisResul
     return {
       summary: "분석 중 오류가 발생했습니다.",
       sentiment: "neutral",
-      keyPoints: ["오류 발생: API 키를 확인해주세요."]
+      keyPoints: ["AI 응답을 가져오지 못했습니다."]
     };
   }
 };
